@@ -47,7 +47,7 @@ android {
         targetSdk = 28
 
         versionCode = 2
-        versionName = "0.2.17"
+        versionName = "0.2.18"
 
         buildConfigField("boolean", "GOLD", "false")
         buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
@@ -169,7 +169,7 @@ dependencies {
     // JavaSteaml
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../../IntelliJ/JavaSteam/build/libs/javasteam-1.6.1-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.6.1-SNAPSHOT.jar"))
         implementation(libs.bundles.steamkit.dev)
     } else {
         implementation(libs.steamkit) {

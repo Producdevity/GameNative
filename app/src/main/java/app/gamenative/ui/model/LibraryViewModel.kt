@@ -126,6 +126,10 @@ class LibraryViewModel @Inject constructor(
                         true
                     }
                 }
+                .sortedWith(
+                    compareByDescending<SteamApp> { SteamService.isAppInstalled(it.id) }
+                        .thenBy { it.name.lowercase() }
+                )
                 .mapIndexed { idx, item ->
                     LibraryItem(
                         index = idx,

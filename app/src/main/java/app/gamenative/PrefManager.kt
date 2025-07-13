@@ -509,5 +509,13 @@ object PrefManager {
         get() = getPref(USE_EXTERNAL_STORAGE, false)
         set(value) {
             setPref(USE_EXTERNAL_STORAGE, value)
+            setPref(EXTERNAL_STORAGE_PATH, "")
+        }
+
+    private val EXTERNAL_STORAGE_PATH = stringPreferencesKey("external_storage_path")
+    var externalStoragePath: String
+        get() = getPref(EXTERNAL_STORAGE_PATH, "")
+        set(value) {
+            setPref(EXTERNAL_STORAGE_PATH, value)
         }
 }

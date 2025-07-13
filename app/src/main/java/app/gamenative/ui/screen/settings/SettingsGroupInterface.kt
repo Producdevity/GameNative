@@ -1,9 +1,13 @@
 package app.gamenative.ui.screen.settings
 
+import android.os.Environment
+import android.os.storage.StorageManager
+import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +28,7 @@ import com.materialkolor.PaletteStyle
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
+import app.gamenative.ui.component.settings.SettingsListDropdown
 
 @Composable
 fun SettingsGroupInterface(
@@ -84,17 +89,62 @@ fun SettingsGroupInterface(
                 PrefManager.downloadOnWifiOnly = it
             },
         )
+        val ctx = LocalContext.current
+        val sm = ctx.getSystemService(StorageManager::class.java)
+
+        // All writable volumes: primary first, then every SD / USB
+        val dirs = remember {
+            ctx.getExternalFilesDirs(null)
+                .filterNotNull()
+                .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
+                .filter { sm.getStorageVolume(it)?.isPrimary != true }
+        }
+
+        // Labels the user sees
+        val labels = remember(dirs) {
+            dirs.map { dir ->
+                sm.getStorageVolume(dir)?.getDescription(ctx) ?: dir.name
+            }
+        }
         var useExternalStorage by rememberSaveable { mutableStateOf(PrefManager.useExternalStorage) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            enabled  = dirs.isNotEmpty(),
             title = { Text(text = "Write to external storage") },
-            subtitle = { Text(text = "Save games to external storage") },
+            subtitle = {
+                if (dirs.isEmpty())
+                    Text("No external storage detected")
+                else
+                    Text("Save games to external storage")
+            },
             state = useExternalStorage,
             onCheckedChange = {
                 useExternalStorage = it
                 PrefManager.useExternalStorage = it
+                if (it && dirs.isNotEmpty()) {
+                    PrefManager.externalStoragePath = dirs[0].absolutePath
+                }
             },
         )
+        if (useExternalStorage) {
+            // Currently selected item
+            var selectedIndex by rememberSaveable {
+                mutableStateOf(
+                    dirs.indexOfFirst { it.absolutePath == PrefManager.externalStoragePath }
+                        .takeIf { it >= 0 } ?: 0
+                )
+            }
+            SettingsListDropdown(
+                title = { Text(text = "Storage volume") },
+                items = labels,
+                value = selectedIndex,
+                onItemSelected = { idx ->
+                    selectedIndex = idx
+                    PrefManager.externalStoragePath = dirs[idx].absolutePath
+                },
+                colors = settingsTileColorsAlt()
+            )
+        }
         // Steam download server selection
         SettingsMenuLink(
             colors = settingsTileColorsAlt(),

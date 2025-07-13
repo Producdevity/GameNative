@@ -284,7 +284,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         private val externalAppInstallPath: String
             get() {
-                return Paths.get(Environment.getExternalStorageDirectory().absolutePath, "GameNative", "Steam", "steamapps", "common").pathString
+                return Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "common").pathString
             }
 
         private val internalAppStagingPath: String
@@ -293,12 +293,12 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         private val externalAppStagingPath: String
             get() {
-                return Paths.get(Environment.getExternalStorageDirectory().absolutePath, "GameNative", "Steam", "steamapps", "staging").pathString
+                return Paths.get(PrefManager.externalStoragePath, "Steam", "steamapps", "staging").pathString
             }
 
         val defaultAppInstallPath: String
             get() {
-                return if (PrefManager.useExternalStorage) {
+                return if (PrefManager.useExternalStorage && File(externalAppInstallPath).exists()) {
                     Timber.i("Using external storage")
                     Timber.i("install path for external storage is " + externalAppInstallPath)
                     externalAppInstallPath
@@ -1573,7 +1573,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.w("Failed to connect to Steam, marking endpoint bad and force disconnecting")
 
                 try {
-                    steamClient!!.servers.tryMark(steamClient!!.currentEndPoint, PROTOCOL_TYPES, ServerQuality.BAD)
+                    steamClient!!.servers.tryMark(steamClient!!.currentEndpoint, PROTOCOL_TYPES, ServerQuality.BAD)
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to mark endpoint as bad:")
                 }

@@ -49,6 +49,9 @@ object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
 
+    private fun findPlaceholderWithin(aString: String): Sequence<MatchResult> =
+        Regex("%\\w+%").findAll(aString)
+
     fun syncUserFiles(
         appInfo: SteamApp,
         clientId: Long,
@@ -65,10 +68,14 @@ object SteamAutoCloud {
         val getPathTypePairs: (AppFileChangeList) -> List<Pair<String, String>> = { fileList ->
             fileList.pathPrefixes
                 .map {
-                    val matchResults = Regex("%\\w+%").findAll(it).map { it.value }.toList()
+                    var matchResults = findPlaceholderWithin(it).map { it.value }.toList()
                     val bare = if (it.startsWith("ROOT_MOD")) listOf("ROOT_MOD") else emptyList()
 
                     Timber.i("Mapping prefix $it and found $matchResults")
+
+                    if (matchResults.isEmpty()) {
+                        matchResults = List(1) { PathType.DEFAULT.name }
+                    }
 
                     matchResults + bare
                 }
@@ -83,6 +90,12 @@ object SteamAutoCloud {
             fileList.pathPrefixes.map { prefix ->
                 var modified = prefix
 
+                val prefixContainsNoPlaceholder = findPlaceholderWithin(prefix).none()
+
+                if (prefixContainsNoPlaceholder) {
+                    modified = Paths.get(PathType.DEFAULT.name, prefix).pathString
+                }
+
                 pathTypePairs.forEach {
                     modified = modified.replace(it.first, it.second)
                 }
@@ -95,7 +108,7 @@ object SteamAutoCloud {
             if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
                 Paths.get(fileList.pathPrefixes[file.pathPrefixIndex]).pathString
             } else {
-                Paths.get("%${PathType.GameInstall.name}%").pathString
+                Paths.get("%${PathType.DEFAULT.name}%").pathString
             }
         }
 
@@ -290,45 +303,49 @@ object SteamAutoCloud {
                             return@forEach
                         }
 
-                        val copyToFile: (InputStream) -> Unit = { input ->
-                            Files.createDirectories(actualFilePath.parent)
+                        try {
+                            val copyToFile: (InputStream) -> Unit = { input ->
+                                Files.createDirectories(actualFilePath.parent)
 
-                            FileOutputStream(actualFilePath.toString()).use { fs ->
-                                val bytesRead = input.copyTo(fs)
+                                FileOutputStream(actualFilePath.toString()).use { fs ->
+                                    val bytesRead = input.copyTo(fs)
 
-                                if (bytesRead != fileDownloadInfo.rawFileSize.toLong()) {
-                                    Timber.w("Bytes read from stream of $prefixedPath does not match expected size")
-                                }
-                            }
-                        }
-
-                        withTimeout(SteamService.responseTimeout) {
-                            if (fileDownloadInfo.fileSize != fileDownloadInfo.rawFileSize) {
-                                response.body?.byteStream()?.use { inputStream ->
-                                    ZipInputStream(inputStream).use { zipInput ->
-                                        val entry = zipInput.nextEntry
-
-                                        if (entry == null) {
-                                            Timber.w("Downloaded user file $prefixedPath has no zip entries")
-                                            return@withTimeout
-                                        }
-
-                                        copyToFile(zipInput)
-
-                                        if (zipInput.nextEntry != null) {
-                                            Timber.e("Downloaded user file $prefixedPath has more than one zip entry")
-                                        }
+                                    if (bytesRead != fileDownloadInfo.rawFileSize.toLong()) {
+                                        Timber.w("Bytes read from stream of $prefixedPath does not match expected size")
                                     }
                                 }
-                            } else {
-                                response.body?.byteStream()?.use { inputStream ->
-                                    copyToFile(inputStream)
-                                }
                             }
 
-                            filesDownloaded++
+                            withTimeout(SteamService.responseTimeout) {
+                                if (fileDownloadInfo.fileSize != fileDownloadInfo.rawFileSize) {
+                                    response.body?.byteStream()?.use { inputStream ->
+                                        ZipInputStream(inputStream).use { zipInput ->
+                                            val entry = zipInput.nextEntry
 
-                            bytesDownloaded += fileDownloadInfo.fileSize
+                                            if (entry == null) {
+                                                Timber.w("Downloaded user file $prefixedPath has no zip entries")
+                                                return@withTimeout
+                                            }
+
+                                            copyToFile(zipInput)
+
+                                            if (zipInput.nextEntry != null) {
+                                                Timber.e("Downloaded user file $prefixedPath has more than one zip entry")
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    response.body?.byteStream()?.use { inputStream ->
+                                        copyToFile(inputStream)
+                                    }
+                                }
+
+                                filesDownloaded++
+
+                                bytesDownloaded += fileDownloadInfo.fileSize
+                            }
+                        } catch (e: FileSystemException) {
+                            Timber.w("Could not download $actualFilePath: %s", e.message);
                         }
 
                         response.close()
