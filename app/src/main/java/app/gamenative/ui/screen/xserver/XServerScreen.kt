@@ -841,7 +841,12 @@ private fun setupXEnvironment(
 
     val enableWineDebug = true // preferences.getBoolean("enable_wine_debug", false)
     val wineDebugChannels = PrefManager.getString("wine_debug_channels", Constants.XServer.DEFAULT_WINE_DEBUG_CHANNELS)
-    envVars.put("WINEDEBUG", if (enableWineDebug && !wineDebugChannels.isEmpty()) "+" + wineDebugChannels.replace(",", ",+") else "-all")
+//    envVars.put("WINEDEBUG", if (enableWineDebug && !wineDebugChannels.isEmpty()) "+" + wineDebugChannels.replace(",", ",+") else "-all")
+    envVars.put("VK_LOADER_DEBUG", "all")
+    envVars.put("WINEDEBUG", "+seh,+tid,+loaddll,+vulkan,+dxgi,+d3d,+winediag")
+    envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_KHRONOS_validation")
+    envVars.put("ZINK_DEBUG", "resource,alloc,mem")
+
 
     val rootPath = imageFs.getRootDir().getPath()
     FileUtils.clear(imageFs.getTmpDir())
@@ -1669,7 +1674,8 @@ private fun extractGraphicsDriverFiles(
         }
         Timber.i("USING VORTEK DRIVER " + vortekVersion + " CHANGED? " + changed)
         if (changed) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-${vortekVersion}.tzst", rootDir)
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-2.0.tzst", rootDir)
+//            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/vortek-${vortekVersion}.tzst", rootDir)
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.assets, "graphics_driver/zink-22.2.5.tzst", rootDir)
         }
     }

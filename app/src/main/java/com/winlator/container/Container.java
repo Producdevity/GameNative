@@ -503,7 +503,7 @@ public class Container {
     }
 
     public void loadData(JSONObject data) throws JSONException {
-        Log.d("Container", "Setting container data: " + data);
+//        Log.d("Container", "Setting container data: " + data);
         wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
         dxwrapperConfig = "";
         checkObsoleteOrMissingProperties(data);
