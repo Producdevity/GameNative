@@ -7,11 +7,12 @@ import com.winlator.core.KeyValueSet;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
 import com.winlator.widget.XServerView;
-import com.winlator.xconnector.Client;
-import com.winlator.xconnector.ConnectionHandler;
-import com.winlator.xconnector.RequestHandler;
+import com.winlator.xconnector.ConnectedClient;
+import com.winlator.xconnector.NewConnectionHandler;
+import com.winlator.xconnector.NewRequestHandler;
+import com.winlator.xconnector.NewXInputStream;
 import com.winlator.xconnector.UnixSocketConfig;
-import com.winlator.xconnector.XConnectorEpoll;
+import com.winlator.xconnector.NewXConnectorEpoll;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xenvironment.EnvironmentComponent;
 import com.winlator.xserver.Drawable;
@@ -22,9 +23,9 @@ import java.util.Objects;
 
 import timber.log.Timber;
 
-public class VortekRendererComponent extends EnvironmentComponent implements ConnectionHandler, RequestHandler {
+public class VortekRendererComponent extends EnvironmentComponent implements NewConnectionHandler, NewRequestHandler {
     public static final int VK_MAX_VERSION = GPUHelper.vkMakeVersion(1, 3, 128);
-    private XConnectorEpoll connector;
+    private NewXConnectorEpoll connector;
     private final Options options;
     private final UnixSocketConfig socketConfig;
     private final XServer xServer;
@@ -77,7 +78,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
             Timber.i("[System] Connector already started, skipping start");
             return;
         }
-        XConnectorEpoll xConnectorEpoll = new XConnectorEpoll(this.socketConfig, this, this);
+        NewXConnectorEpoll xConnectorEpoll = new NewXConnectorEpoll(this.socketConfig, this, this);
         this.connector = xConnectorEpoll;
         xConnectorEpoll.setInitialInputBufferCapacity(1);
         this.connector.setInitialOutputBufferCapacity(0);
@@ -88,10 +89,9 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
     @Override // com.winlator.xenvironment.EnvironmentComponent
     public void stop() {
         Timber.i("[System] Stopping");
-        XConnectorEpoll xConnectorEpoll = this.connector;
+        NewXConnectorEpoll xConnectorEpoll = this.connector;
         if (xConnectorEpoll != null) {
-            Timber.i("[System] Stopping connector");
-            xConnectorEpoll.stop();
+            xConnectorEpoll.destroy();
             this.connector = null;
             Timber.i("[System] Connector stopped");
         } else {
@@ -167,7 +167,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
     }
 
     @Override // com.winlator.xconnector.ConnectionHandler
-    public void handleConnectionShutdown(Client client) {
+    public void handleConnectionShutdown(ConnectedClient client) {
         Timber.i("[System] Attempting to handleConnectionShutdown for client: %s", client);
         if (client.getTag() != null) {
             long contextPtr = ((Long) client.getTag()).longValue();
@@ -180,17 +180,16 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
     }
 
     @Override // com.winlator.xconnector.ConnectionHandler
-    public void handleNewConnection(Client client) {
+    public void handleNewConnection(ConnectedClient client) {
         Timber.i("[System] Attempting to handleNewConnection for client: %s", client);
         Timber.i("[System] Creating IO streams for client: %s", client);
-        client.createIOStreams();
         Timber.i("[System] IO streams created for client: %s", client);
     }
 
     @Override // com.winlator.xconnector.RequestHandler
-    public boolean handleRequest(Client client) throws IOException {
+    public boolean handleRequest(ConnectedClient client) throws IOException {
         Timber.i("[System] Handling request for client: %s", client);
-        XInputStream inputStream = client.getInputStream();
+        NewXInputStream inputStream = client.getInputStream();
         if (inputStream.available() < 1) {
             Timber.i("[System] No data available in inputStream for client: %s, returning false", client);
             return false;
@@ -199,7 +198,7 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
         Timber.i("[System] Received requestCode: %d for client: %s", requestCode, client);
         if (requestCode == 1) {
             Timber.i("[System] Attempting to create VkContext for client: %s", client);
-            long contextPtr = createVkContext(client.clientSocket.fd, this.options);
+            long contextPtr = createVkContext(client.fd, this.options);
             if (contextPtr > 0) {
                 Timber.i("[System] VkContext created with ptr: %d for client: %s", contextPtr, client);
                 client.setTag(Long.valueOf(contextPtr));
