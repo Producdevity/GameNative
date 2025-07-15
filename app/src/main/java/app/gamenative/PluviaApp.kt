@@ -18,11 +18,17 @@ import com.posthog.android.PostHogAndroidConfig
 
 typealias NavChangedListener = NavController.OnDestinationChangedListener
 
+object NativeHooks {
+    init { System.loadLibrary("redirect_logging-bionic") }
+    @JvmStatic external fun init()
+}
+
 @HiltAndroidApp
 class PluviaApp : SplitCompatApplication() {
 
     override fun onCreate() {
         super.onCreate()
+        NativeHooks.init()
 
         // Allows to find resource streams not closed within GameNative and JavaSteam
         if (BuildConfig.DEBUG) {
