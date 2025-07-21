@@ -841,7 +841,8 @@ private fun setupXEnvironment(
 
     val enableWineDebug = true // preferences.getBoolean("enable_wine_debug", false)
     val wineDebugChannels = PrefManager.getString("wine_debug_channels", Constants.XServer.DEFAULT_WINE_DEBUG_CHANNELS)
-    envVars.put("WINEDEBUG", if (enableWineDebug && !wineDebugChannels.isEmpty()) "+" + wineDebugChannels.replace(",", ",+") else "-all")
+//    envVars.put("WINEDEBUG", if (enableWineDebug && !wineDebugChannels.isEmpty()) "+" + wineDebugChannels.replace(",", ",+") else "-all")
+    envVars.put("WINEDEBUG", "+x11drv,+warn,+err,+fixme")
 
     val rootPath = imageFs.getRootDir().getPath()
     FileUtils.clear(imageFs.getTmpDir())

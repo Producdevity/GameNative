@@ -112,6 +112,13 @@ public class WindowManager extends XResourceManager {
         }
     }
 
+    public void mapSubWindows(Window window) {
+        for (Window child : window.getChildren()) {
+            mapSubWindows(child);
+        }
+        mapWindow(window);
+    }
+
     public Window getFocusedWindow() {
         return focusedWindow;
     }

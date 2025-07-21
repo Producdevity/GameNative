@@ -1,5 +1,7 @@
 package com.winlator.xserver;
 
+import android.util.Log;
+
 import com.winlator.xconnector.Client;
 import com.winlator.xconnector.RequestHandler;
 import com.winlator.xconnector.XInputStream;
@@ -188,6 +190,10 @@ public class XClientRequestHandler implements RequestHandler {
                         WindowRequests.destroyWindow(client, inputStream, outputStream);
                     }
                     break;
+                case ClientOpcodes.DESTROY_SUB_WINDOWS:
+                    try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER, XServer.Lockable.INPUT_DEVICE)) {
+                        WindowRequests.destroySubWindows(client, inputStream, outputStream);
+                    }
                 case ClientOpcodes.REPARENT_WINDOW:
                     try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                         WindowRequests.reparentWindow(client, inputStream, outputStream);
@@ -196,6 +202,11 @@ public class XClientRequestHandler implements RequestHandler {
                 case ClientOpcodes.MAP_WINDOW:
                     try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.INPUT_DEVICE)) {
                         WindowRequests.mapWindow(client, inputStream, outputStream);
+                    }
+                    break;
+                case ClientOpcodes.MAP_SUB_WINDOWS:
+                    try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.INPUT_DEVICE)) {
+                        WindowRequests.mapSubWindows(client, inputStream, outputStream);
                     }
                     break;
                 case ClientOpcodes.UNMAP_WINDOW:
@@ -220,6 +231,12 @@ public class XClientRequestHandler implements RequestHandler {
                     break;
                 case ClientOpcodes.INTERN_ATOM:
                     AtomRequests.internAtom(client, inputStream, outputStream);
+                    break;
+                /* This seems to also link to UnmapWindow */
+                case ClientOpcodes.GET_ATOM_NAME:
+                    try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.INPUT_DEVICE)) {
+                        AtomRequests.getAtomName(client, inputStream, outputStream);
+                    }
                     break;
                 case ClientOpcodes.CHANGE_PROPERTY:
                     try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
@@ -284,6 +301,15 @@ public class XClientRequestHandler implements RequestHandler {
                 case ClientOpcodes.GET_INPUT_FOCUS:
                     try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
                         WindowRequests.getInputFocus(client, inputStream, outputStream);
+                    }
+                    break;
+                case ClientOpcodes.QUERY_KEYMAP:
+                    try (XLock lock = client.xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                        outputStream.writeByte(RESPONSE_CODE_SUCCESS);
+                        outputStream.writeByte((byte) 0);
+                        outputStream.writeShort(client.getSequenceNumber());
+                        outputStream.writeInt(2);
+                        outputStream.writePad(32);
                     }
                     break;
                 case ClientOpcodes.OPEN_FONT:
@@ -396,12 +422,32 @@ public class XClientRequestHandler implements RequestHandler {
                 case ClientOpcodes.NO_OPERATION:
                     client.skipRequest();
                     break;
+                case ClientOpcodes.GET_POINTER_MAPPING:
+                    CursorRequests.getPointerMapping(client, inputStream, outputStream);
+                    break;
+                case ClientOpcodes.X_GRAB_SERVER:
+                    try (XLock lock = client.xServer.lockAll()) {
+                        client.xServer.setGrabbed(true, client);
+                        outputStream.writeSuccessReply(client.getSequenceNumber(), 0);
+                        Log.d("XClientRequestHandler", "X_GrabServer request handled successfully:" + outputStream.buffer.position());
+                    }
+                    break;
+
+                case ClientOpcodes.X_UNGRAB_SERVER:
+                    try (XLock lock = client.xServer.lockAll()) {
+                        if (client.xServer.isGrabbedBy(client)) {
+                            client.xServer.setGrabbed(false, null);
+                        }
+                        outputStream.writeSuccessReply(client.getSequenceNumber(), 0);
+                        Log.d("XClientRequestHandler", "X_UngrabServer request handled successfully:" + outputStream.buffer.position());
+                    }
+                    break;
                 default:
                     if (opcode < 0) {
                         Extension extension = client.xServer.extensions.get(opcode);
                         if (extension != null) extension.handleRequest(client, inputStream, outputStream);
                     }
-                    else throw new UnsupportedOperationException("Unsupported opcode "+opcode+".");
+                    else Log.d("XClientRequestHandler", "Unsupported opcode " + opcode);
                     break;
             }
         }
