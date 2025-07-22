@@ -275,6 +275,7 @@ private fun Preview_LibraryListPane() {
                         appId = item.id,
                         name = item.name,
                         iconHash = item.iconHash,
+                        isShared = idx % 2 == 0,
                     )
                 },
             ),

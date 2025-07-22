@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -114,9 +115,9 @@ internal fun AppItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Row(
+                FlowRow(
                     modifier = Modifier.padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Status indicator: Installing / Installed / Not installed
                     val statusText = when {
@@ -157,12 +158,7 @@ internal fun AppItem(
                     // Only show game size for installed games
                     if (isInstalled) {
                         Text(
-                            text = " • ",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Text(
-                            text = appSizeOnDisk,
+                            text = "• $appSizeOnDisk",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -170,11 +166,13 @@ internal fun AppItem(
 
                     // Family share indicator if needed
                     if (appInfo.isShared) {
-                        Text(
-                            text = " • Family Shared",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
+                        Box(modifier = Modifier.align(Alignment.CenterVertically)) {
+                            Text(
+                                text = "• Family Shared",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+                                color = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                     }
                 }
             }
@@ -204,7 +202,7 @@ internal fun AppItem(
  ***********/
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
-@Preview
+@Preview(device = "spec:width=1920px,height=1080px,dpi=440") // Odin2 Mini
 @Composable
 private fun Preview_AppItem() {
     PluviaTheme {
