@@ -148,6 +148,8 @@ import java.lang.NullPointerException
 import java.util.concurrent.TimeUnit
 import android.os.Environment
 import android.os.SystemClock
+import app.gamenative.enums.Marker
+import app.gamenative.utils.MarkerUtils
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -247,15 +249,12 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private var instance: SteamService? = null
 
-        const val DOWNLOAD_COMPLETE_MARKER = ".download_complete"
-
         private val downloadJobs = ConcurrentHashMap<Int, DownloadInfo>()
 
         /** Returns true if there is an incomplete download on disk (no complete marker). */
         fun hasPartialDownload(appId: Int): Boolean {
-            val dir = File(getAppDirPath(appId))
-            val marker = File(dir, DOWNLOAD_COMPLETE_MARKER)
-            return dir.exists() && !marker.exists()
+            val dirPath = getAppDirPath(appId)
+            return File(dirPath).exists() && !MarkerUtils.hasMarker(dirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
         }
 
         private var syncInProgress: Boolean = false
@@ -367,16 +366,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun isAppInstalled(appId: Int): Boolean {
-            val dir = File(getAppDirPath(appId))
-            val markerFile = File(dir, DOWNLOAD_COMPLETE_MARKER)
-            val appDownloadInfo = getAppDownloadInfo(appId)
-            val isNotDownloading = appDownloadInfo == null || appDownloadInfo.getProgress() >= 1f
-            val appDirPath = Paths.get(getAppDirPath(appId))
-            val pathExists = Files.exists(appDirPath)
-
-            // logD("isDownloading: $isNotDownloading && pathExists: $pathExists && appDirPath: $appDirPath")
-
-            return isNotDownloading && pathExists && markerFile.exists()
+            return MarkerUtils.hasMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
         }
 
         fun getAppDlc(appId: Int): Map<Int, DepotInfo> {
@@ -620,8 +610,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun deleteApp(appId: Int): Boolean {
             // Remove any download-complete marker
-            val marker = File(getAppDirPath(appId), DOWNLOAD_COMPLETE_MARKER)
-            if (marker.exists()) marker.delete()
+            MarkerUtils.removeMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
+            // Remove from DB
             with(instance!!) {
                 scope.launch {
                     db.withTransaction {
@@ -801,14 +791,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }.awaitAll()
                     }
                     downloadJobs.remove(appId)
-                    // Write complete marker on disk
-                    try {
-                        val dir = File(getAppDirPath(appId))
-                        dir.mkdirs()
-                        File(dir, DOWNLOAD_COMPLETE_MARKER).createNewFile()
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to write download complete marker for $appId")
-                    }
+                    // Write download complete marker on disk
+                    MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
                 })
             }
 

@@ -99,10 +99,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import app.gamenative.service.SteamService.Companion.DOWNLOAD_COMPLETE_MARKER
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import com.posthog.PostHog
-import java.io.File
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -123,7 +121,9 @@ import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import app.gamenative.enums.Marker
 import app.gamenative.enums.SaveLocation
+import app.gamenative.utils.MarkerUtils
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -182,14 +182,7 @@ fun AppScreen(
                 isInstalled = SteamService.isAppInstalled(appId)
                 downloadInfo = null
                 isInstalled = true
-                try {
-                    val dir = File(getAppDirPath(appId))
-                    dir.mkdirs()
-                    File(dir, DOWNLOAD_COMPLETE_MARKER).createNewFile()
-                    Timber.i("Wrote download complete marker for $appId at $dir")
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to write download complete marker for $appId")
-                }
+                MarkerUtils.addMarker(getAppDirPath(appId), Marker.DOWNLOAD_COMPLETE_MARKER)
             }
             downloadProgress = it
         }
