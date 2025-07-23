@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
+import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import `in`.dragonbra.javasteam.util.HardwareUtils
 import java.io.FileOutputStream
@@ -119,9 +120,12 @@ object SteamUtils {
      * Replaces any existing `steam_api.dll` or `steam_api64.dll` in the app directory
      * with our pipe dll stored in assets
      */
-    fun replaceSteamApi(context: Context, appId: Int) {
-        Timber.i("Starting replaceSteamApi for appId: $appId")
+    suspend fun replaceSteamApi(context: Context, appId: Int) {
         val appDirPath = SteamService.getAppDirPath(appId)
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
+            return
+        }
+        Timber.i("Starting replaceSteamApi for appId: $appId")
         Timber.i("Checking directory: $appDirPath")
         var replaced32 = false
         var replaced64 = false
@@ -157,6 +161,7 @@ object SteamUtils {
                 ensureSteamSettings(it, appId)
             }
         }
+        MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
         Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
     }
 
