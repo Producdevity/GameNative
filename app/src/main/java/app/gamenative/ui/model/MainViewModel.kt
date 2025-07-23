@@ -193,15 +193,17 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: Int) {
-        SteamUtils.replaceSteamApi(context, appId)
         // Show booting splash before launching the app
         viewModelScope.launch {
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
-            
+
             // Small delay to ensure the splash screen is visible before proceeding
             delay(100)
-            
+
+            // Update DLLs if they have not been done before
+            SteamUtils.replaceSteamApi(context, appId)
+
             _uiEvent.send(MainUiEvent.LaunchApp)
         }
     }
@@ -221,7 +223,7 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
-            
+
             SteamService.getAppInfoOf(appId)?.let { appInfo ->
                 // TODO: this should not be a search, the app should have been launched with a specific launch config that we then use to compare
                 val launchConfig = SteamService.getWindowsLaunchInfos(appId).firstOrNull {
@@ -264,7 +266,7 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
-            
+
             // You could also show an error dialog here if needed
             Timber.e("Game launch error: $error")
         }
