@@ -21,6 +21,7 @@ import com.materialkolor.PaletteStyle
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.AppProcessInfo
+import kotlinx.coroutines.Dispatchers
 import java.nio.file.Paths
 import javax.inject.Inject
 import kotlin.io.path.name
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -198,11 +200,15 @@ class MainViewModel @Inject constructor(
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
+            val apiJob = viewModelScope.async(Dispatchers.IO) {
+                // Update DLLs if they have not been done before
+                SteamUtils.replaceSteamApi(context, appId)
+            }
+
             // Small delay to ensure the splash screen is visible before proceeding
             delay(100)
 
-            // Update DLLs if they have not been done before
-            SteamUtils.replaceSteamApi(context, appId)
+            apiJob.await()
 
             _uiEvent.send(MainUiEvent.LaunchApp)
         }
