@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlinx.coroutines.Job
+import app.gamenative.utils.ContainerUtils
 import kotlinx.coroutines.async
 
 @HiltViewModel
@@ -195,14 +196,20 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: Int) {
+        // Check if we should use real Steam or replace Steam API
+        val container = ContainerUtils.getContainer(context, appId)
+
         // Show booting splash before launching the app
         viewModelScope.launch {
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
-                // Update DLLs if they have not been done before
-                SteamUtils.replaceSteamApi(context, appId)
+                if (container.isLaunchRealSteam()) {
+                    SteamUtils.restoreSteamApi(context, appId)
+                } else {
+                    SteamUtils.replaceSteamApi(context, appId)
+                }
             }
 
             // Small delay to ensure the splash screen is visible before proceeding
@@ -223,7 +230,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun onWindowMapped(window: Window, appId: Int) {
+    fun onWindowMapped(context: Context, window: Window, appId: Int) {
         viewModelScope.launch {
             // Hide the booting splash when a window is mapped
             bootingSplashTimeoutJob?.cancel()
@@ -259,7 +266,14 @@ class MainViewModel @Inject constructor(
                     } while (parentWindow != null)
 
                     GameProcessInfo(appId = appId, processes = processes).let {
-                        SteamService.notifyRunningProcesses(it)
+                        // Only notify Steam if we're not using real Steam
+                        // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
+                        val container = ContainerUtils.getContainer(context, appId)
+                        if (!container.isLaunchRealSteam()) {
+                            SteamService.notifyRunningProcesses(it)
+                        } else {
+                            Timber.i("Skipping Steam process notification - real Steam will handle this")
+                        }
                     }
                 }
             }
