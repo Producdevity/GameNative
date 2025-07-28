@@ -130,6 +130,7 @@ object SteamUtils {
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_REPLACED)) {
             return
         }
+        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
         Timber.i("Starting replaceSteamApi for appId: $appId")
         Timber.i("Checking directory: $appDirPath")
         var replaced32 = false
@@ -192,7 +193,6 @@ object SteamUtils {
                 ensureSteamSettings(it, appId)
             }
         }
-        MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
         Timber.i("Finished replaceSteamApi for appId: $appId. Replaced 32bit: $replaced32, Replaced 64bit: $replaced64")
 
         // Restore unpacked executable if it exists (for DRM-free mode)
@@ -200,6 +200,7 @@ object SteamUtils {
 
         // Create Steam ACF manifest for real Steam compatibility
         createAppManifest(context, appId)
+        MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
     }
 
     /**
@@ -352,6 +353,10 @@ object SteamUtils {
     fun restoreSteamApi(context: Context, appId: Int) {
         Timber.i("Starting restoreSteamApi for appId: $appId")
         val appDirPath = SteamService.getAppDirPath(appId)
+        if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
+            return
+        }
+        MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
         Timber.i("Checking directory: $appDirPath")
         var restored32 = false
         var restored64 = false
@@ -405,6 +410,7 @@ object SteamUtils {
 
         // Create Steam ACF manifest for real Steam compatibility
         createAppManifest(context, appId)
+        MarkerUtils.addMarker(appDirPath, Marker.STEAM_DLL_RESTORED)
     }
 
     /**
