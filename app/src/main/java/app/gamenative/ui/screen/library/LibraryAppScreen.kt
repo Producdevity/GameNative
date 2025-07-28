@@ -99,7 +99,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import app.gamenative.service.SteamService.Companion.DOWNLOAD_COMPLETE_MARKER
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import com.posthog.PostHog
 import android.content.Context
@@ -126,6 +125,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.enums.SaveLocation
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.compositeOver
+import app.gamenative.utils.MarkerUtils
 
 // https://partner.steamgames.com/doc/store/assets/libraryassets#4
 
@@ -1309,10 +1309,18 @@ private fun AppScreenContent(
                                     if (isInstalled && (appSizeOnDisk.isEmpty() || appSizeOnDisk == " ...")) {
                                         SkeletonText(lines = 1, lineHeight = 20)
                                     } else {
-                                        Text(
-                                            text = appSizeOnDisk,
-                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                                        )
+                                        if (!isInstalled){
+                                            Text(
+                                                text = DownloadService.getSizeFromStoreDisplay(appInfo.id),
+                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                            )
+                                        }
+                                        else {
+                                            Text(
+                                                text = appSizeOnDisk,
+                                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                                            )
+                                        }
                                     }
                                 }
                             }
