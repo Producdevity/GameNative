@@ -3,6 +3,7 @@ package app.gamenative
 import android.os.StrictMode
 import androidx.navigation.NavController
 import app.gamenative.events.EventDispatcher
+import app.gamenative.utils.IntentLaunchManager
 import com.google.android.play.core.splitcompat.SplitCompatApplication
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.widget.InputControlsView
@@ -44,6 +45,14 @@ class PluviaApp : SplitCompatApplication() {
         // Init our datastore preferences.
         PrefManager.init(this)
 
+        // Clear any stale temporary config overrides from previous app sessions
+        try {
+            IntentLaunchManager.clearAllTemporaryOverrides()
+            Timber.d("[PluviaApp]: Cleared temporary config overrides from previous session")
+        } catch (e: Exception) {
+            Timber.e(e, "[PluviaApp]: Failed to clear temporary config overrides")
+        }
+
         // Initialize PostHog Analytics
         val postHogConfig = PostHogAndroidConfig(
             apiKey = BuildConfig.POSTHOG_API_KEY,
@@ -56,7 +65,7 @@ class PluviaApp : SplitCompatApplication() {
         internal val events: EventDispatcher = EventDispatcher()
         internal var onDestinationChangedListener: NavChangedListener? = null
 
-        // TODO: find a way to make this saveable, this is terrible
+        // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
         internal var xServerView: XServerView? = null
         var inputControlsView: InputControlsView? = null
