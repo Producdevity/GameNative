@@ -23,7 +23,7 @@ object IntentLaunchManager {
     )
 
     fun parseLaunchIntent(intent: Intent): LaunchRequest? {
-        Timber.d("[IntentLaunchManager]: Parsing intent: action=${intent.action}, extras=${intent.extras}")
+        Timber.d("[IntentLaunchManager]: Parsing intent: action=${intent.action}")
 
         if (intent.action != ACTION_LAUNCH_GAME) {
             Timber.d("[IntentLaunchManager]: Intent action '${intent.action}' doesn't match expected action '$ACTION_LAUNCH_GAME'")
@@ -239,30 +239,31 @@ object IntentLaunchManager {
             execArgs = override.execArgs.ifEmpty { base.execArgs },
             executablePath = override.executablePath.ifEmpty { base.executablePath },
             installPath = override.installPath.ifEmpty { base.installPath },
-            showFPS = override.showFPS,
-            launchRealSteam = override.launchRealSteam,
+            // Boolean fields: only override if different from parsing defaults
+            showFPS = if (override.showFPS != false) override.showFPS else base.showFPS,
+            launchRealSteam = if (override.launchRealSteam != false) override.launchRealSteam else base.launchRealSteam,
             cpuList = if (override.cpuList != Container.getFallbackCPUList()) override.cpuList else base.cpuList,
             cpuListWoW64 = if (override.cpuListWoW64 != Container.getFallbackCPUListWoW64()) override.cpuListWoW64 else base.cpuListWoW64,
-            wow64Mode = override.wow64Mode,
-            startupSelection = override.startupSelection,
+            wow64Mode = if (override.wow64Mode != true) override.wow64Mode else base.wow64Mode,
+            startupSelection = if (override.startupSelection != Container.STARTUP_SELECTION_ESSENTIAL.toInt().toByte()) override.startupSelection else base.startupSelection,
             box86Version = override.box86Version.ifEmpty { base.box86Version },
             box64Version = override.box64Version.ifEmpty { base.box64Version },
             box86Preset = override.box86Preset.ifEmpty { base.box86Preset },
             box64Preset = override.box64Preset.ifEmpty { base.box64Preset },
             desktopTheme = override.desktopTheme.ifEmpty { base.desktopTheme },
-            csmt = override.csmt,
-            videoPciDeviceID = override.videoPciDeviceID,
-            offScreenRenderingMode = override.offScreenRenderingMode,
-            strictShaderMath = override.strictShaderMath,
-            videoMemorySize = override.videoMemorySize,
-            mouseWarpOverride = override.mouseWarpOverride,
-            sdlControllerAPI = override.sdlControllerAPI,
-            enableXInput = override.enableXInput,
-            enableDInput = override.enableDInput,
-            dinputMapperType = override.dinputMapperType,
-            disableMouseInput = override.disableMouseInput,
-            shaderBackend = override.shaderBackend,
-            useGLSL = override.useGLSL
+            csmt = if (override.csmt != true) override.csmt else base.csmt,
+            videoPciDeviceID = if (override.videoPciDeviceID != 1728) override.videoPciDeviceID else base.videoPciDeviceID,
+            offScreenRenderingMode = if (override.offScreenRenderingMode != "fbo") override.offScreenRenderingMode else base.offScreenRenderingMode,
+            strictShaderMath = if (override.strictShaderMath != true) override.strictShaderMath else base.strictShaderMath,
+            videoMemorySize = if (override.videoMemorySize != "2048") override.videoMemorySize else base.videoMemorySize,
+            mouseWarpOverride = if (override.mouseWarpOverride != "disable") override.mouseWarpOverride else base.mouseWarpOverride,
+            sdlControllerAPI = if (override.sdlControllerAPI != true) override.sdlControllerAPI else base.sdlControllerAPI,
+            enableXInput = if (override.enableXInput != true) override.enableXInput else base.enableXInput,
+            enableDInput = if (override.enableDInput != true) override.enableDInput else base.enableDInput,
+            dinputMapperType = if (override.dinputMapperType != 1.toByte()) override.dinputMapperType else base.dinputMapperType,
+            disableMouseInput = if (override.disableMouseInput != false) override.disableMouseInput else base.disableMouseInput,
+            shaderBackend = if (override.shaderBackend != "glsl") override.shaderBackend else base.shaderBackend,
+            useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL
         )
     }
 }
