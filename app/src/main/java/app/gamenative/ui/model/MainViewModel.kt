@@ -126,6 +126,7 @@ class MainViewModel @Inject constructor(
 
     override fun onCleared() {
         PluviaApp.events.off<AndroidEvent.BackPressed, Unit>(onBackPressed)
+        PluviaApp.events.off<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)

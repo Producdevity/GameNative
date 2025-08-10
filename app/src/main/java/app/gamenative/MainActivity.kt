@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
         private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
         
         // Store pending launch request to be processed after UI is ready
+        @Volatile
         var pendingLaunchRequest: IntentLaunchManager.LaunchRequest? = null
     }
 
@@ -151,7 +152,7 @@ class MainActivity : ComponentActivity() {
         handleLaunchIntent(intent)
     }
     private fun handleLaunchIntent(intent: Intent) {
-        Timber.d("[MainActivity]: handleLaunchIntent called with intent: action=${intent.action}, extras=${intent.extras}")
+        Timber.d("[MainActivity]: handleLaunchIntent called with action=${intent.action}")
         try {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
