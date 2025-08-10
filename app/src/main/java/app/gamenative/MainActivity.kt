@@ -17,6 +17,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +39,7 @@ import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import java.util.EnumSet
 import kotlin.math.abs
 import okio.Path.Companion.toOkioPath
@@ -54,7 +56,23 @@ class MainActivity : ComponentActivity() {
         
         // Store pending launch request to be processed after UI is ready
         @Volatile
-        var pendingLaunchRequest: IntentLaunchManager.LaunchRequest? = null
+        private var pendingLaunchRequest: IntentLaunchManager.LaunchRequest? = null
+        
+        // Atomically get and clear the pending launch request
+        fun consumePendingLaunchRequest(): IntentLaunchManager.LaunchRequest? {
+            synchronized(this) {
+                val request = pendingLaunchRequest
+                pendingLaunchRequest = null
+                return request
+            }
+        }
+        
+        // Atomically set a new pending launch request
+        fun setPendingLaunchRequest(request: IntentLaunchManager.LaunchRequest) {
+            synchronized(this) {
+                pendingLaunchRequest = request
+            }
+        }
     }
 
     private val onSetSystemUi: (AndroidEvent.SetSystemUIVisibility) -> Unit = {
@@ -158,9 +176,23 @@ class MainActivity : ComponentActivity() {
             if (launchRequest != null) {
                 Timber.d("[MainActivity]: Received external launch intent for app ${launchRequest.appId}")
                 
-                // Store the launch request to be processed after UI is ready
-                pendingLaunchRequest = launchRequest
-                Timber.d("[MainActivity]: Stored pending launch request for app ${launchRequest.appId}")
+                // If already logged in, emit event immediately
+                // Otherwise store for processing after login
+                if (SteamService.isLoggedIn) {
+                    Timber.d("[MainActivity]: User already logged in, emitting ExternalGameLaunch event immediately")
+                    lifecycleScope.launch {
+                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
+                    }
+                    
+                    // Apply config override if present
+                    launchRequest.containerConfig?.let { config ->
+                        IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
+                    }
+                } else {
+                    // Store the launch request to be processed after login
+                    setPendingLaunchRequest(launchRequest)
+                    Timber.d("[MainActivity]: User not logged in, stored pending launch request for app ${launchRequest.appId}")
+                }
             } else {
                 Timber.d("[MainActivity]: parseLaunchIntent returned null")
             }

@@ -95,7 +95,7 @@ fun PluviaMain(
     // Process any pending launch request from MainActivity after login
     LaunchedEffect(SteamService.isLoggedIn) {
         if (SteamService.isLoggedIn) {
-            MainActivity.pendingLaunchRequest?.let { launchRequest ->
+            MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
                 Timber.i("[PluviaMain]: Processing pending launch request for app ${launchRequest.appId} (user is now logged in)")
 
                 // Check if the game is installed
@@ -111,7 +111,6 @@ fun PluviaMain(
                         message = context.getString(R.string.game_not_installed_message, appName),
                         dismissBtnText = context.getString(R.string.ok)
                     )
-                    MainActivity.pendingLaunchRequest = null
                     return@let
                 }
 
@@ -143,7 +142,6 @@ fun PluviaMain(
                     setMessageDialogState = setMessageDialogState,
                     onSuccess = viewModel::launchApp,
                 )
-                MainActivity.pendingLaunchRequest = null
             }
         }
     }

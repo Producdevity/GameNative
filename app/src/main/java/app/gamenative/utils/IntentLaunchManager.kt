@@ -60,9 +60,11 @@ object IntentLaunchManager {
             if (ContainerUtils.hasContainer(context, appId)) {
                 val container = ContainerUtils.getContainer(context, appId)
 
-                // Backup original config before applying override
-                val originalConfig = ContainerUtils.toContainerData(container)
-                TemporaryConfigStore.setOriginalConfig(appId, originalConfig)
+                // Backup original config before applying override (only once)
+                if (TemporaryConfigStore.getOriginalConfig(appId) == null) {
+                    val originalConfig = ContainerUtils.toContainerData(container)
+                    TemporaryConfigStore.setOriginalConfig(appId, originalConfig)
+                }
 
                 // Get the effective config (merge base with override)
                 val effectiveConfig = getEffectiveContainerConfig(context, appId)
