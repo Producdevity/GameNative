@@ -13,5 +13,7 @@ interface AndroidEvent<T> : Event<T> {
     data class KeyEvent(val event: android.view.KeyEvent) : AndroidEvent<Boolean>
     data class MotionEvent(val event: android.view.MotionEvent?) : AndroidEvent<Boolean>
     data object EndProcess : AndroidEvent<Unit>
+    data class ExternalGameLaunch(val appId: Int) : AndroidEvent<Unit>
+    data class PromptSaveContainerConfig(val appId: Int) : AndroidEvent<Unit>
     // data class SetAppBarVisibility(val visible: Boolean) : AndroidEvent<Unit>
 }

@@ -15,6 +15,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.data.MainState
+import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.utils.SteamUtils
 import com.materialkolor.PaletteStyle
@@ -47,6 +48,7 @@ class MainViewModel @Inject constructor(
         data object OnBackPressed : MainUiEvent()
         data object OnLoggedOut : MainUiEvent()
         data object LaunchApp : MainUiEvent()
+        data class ExternalGameLaunch(val appId: Int) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
     }
 
@@ -90,10 +92,19 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private val onExternalGameLaunch: (AndroidEvent.ExternalGameLaunch) -> Unit = {
+        Timber.i("[MainViewModel]: Received external game launch event for app ${it.appId}")
+        viewModelScope.launch {
+            Timber.i("[MainViewModel]: Sending ExternalGameLaunch UI event for app ${it.appId}")
+            _uiEvent.send(MainUiEvent.ExternalGameLaunch(it.appId))
+        }
+    }
+
     private var bootingSplashTimeoutJob: Job? = null
 
     init {
         PluviaApp.events.on<AndroidEvent.BackPressed, Unit>(onBackPressed)
+        PluviaApp.events.on<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.on<SteamEvent.LogonStarted, Unit>(onLoggingIn)
@@ -196,15 +207,13 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: Int) {
-        // Check if we should use real Steam or replace Steam API
-        val container = ContainerUtils.getContainer(context, appId)
-
         // Show booting splash before launching the app
         viewModelScope.launch {
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
             val apiJob = viewModelScope.async(Dispatchers.IO) {
+                val container = ContainerUtils.getOrCreateContainer(context, appId)
                 if (container.isLaunchRealSteam()) {
                     SteamUtils.restoreSteamApi(context, appId)
                 } else {
@@ -223,10 +232,19 @@ class MainViewModel @Inject constructor(
 
     fun exitSteamApp(context: Context, appId: Int) {
         viewModelScope.launch {
+            // Check if we have a temporary override before doing anything
+            val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
+            
             SteamService.notifyRunningProcesses()
             SteamService.closeApp(appId) { prefix ->
                 PathType.from(prefix).toAbsPath(context, appId)
             }.await()
+
+            // Prompt user to save temporary container configuration if one was applied
+            if (hadTemporaryOverride) {
+                PluviaApp.events.emit(AndroidEvent.PromptSaveContainerConfig(appId))
+                // Dialog handler in PluviaMain manages the save/discard logic
+            }
         }
     }
 
@@ -268,8 +286,15 @@ class MainViewModel @Inject constructor(
                     GameProcessInfo(appId = appId, processes = processes).let {
                         // Only notify Steam if we're not using real Steam
                         // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
-                        val container = ContainerUtils.getContainer(context, appId)
-                        if (!container.isLaunchRealSteam()) {
+                        val shouldLaunchRealSteam = try {
+                            val container = ContainerUtils.getContainer(context, appId)
+                            container.isLaunchRealSteam()
+                        } catch (e: Exception) {
+                            // Container might not exist, default to notifying Steam
+                            false
+                        }
+
+                        if (!shouldLaunchRealSteam) {
                             SteamService.notifyRunningProcesses(it)
                         } else {
                             Timber.i("Skipping Steam process notification - real Steam will handle this")

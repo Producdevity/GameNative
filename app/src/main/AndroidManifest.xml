@@ -54,6 +54,10 @@
                     android:host="pluvia"
                     android:scheme="home" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="app.gamenative.LAUNCH_GAME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
         <service
             android:name=".service.SteamService"

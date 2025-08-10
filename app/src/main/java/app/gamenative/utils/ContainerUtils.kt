@@ -60,6 +60,7 @@ object ContainerUtils {
             box64Version = PrefManager.box64Version,
             box86Preset = PrefManager.box86Preset,
             box64Preset = PrefManager.box64Preset,
+            desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
 
             csmt = PrefManager.csmt,
             videoPciDeviceID = PrefManager.videoPciDeviceID,
@@ -188,8 +189,12 @@ object ContainerUtils {
         }
     }
 
-    private fun applyToContainer(context: Context, container: Container, containerData: ContainerData) {
-        Timber.d("Applying containerData to container. execArgs: '${containerData.execArgs}'")
+    fun applyToContainer(context: Context, container: Container, containerData: ContainerData) {
+        applyToContainer(context, container, containerData, saveToDisk = true)
+    }
+    
+    fun applyToContainer(context: Context, container: Container, containerData: ContainerData, saveToDisk: Boolean) {
+        Timber.d("Applying containerData to container. execArgs: '${containerData.execArgs}', saveToDisk: $saveToDisk")
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         WineRegistryEditor(userRegFile).use { registryEditor ->
             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "csmt", if (containerData.csmt) 3 else 0)
@@ -235,7 +240,6 @@ object ContainerUtils {
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
         container.setDisableMouseInput(containerData.disableMouseInput)
-        container.saveData()
 
         // Apply controller settings to container
         val api = when {
@@ -247,7 +251,10 @@ object ContainerUtils {
         container.setInputType(api.ordinal)
         container.setDinputMapperType(containerData.dinputMapperType)
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
-        container.saveData()
+        
+        if (saveToDisk) {
+            container.saveData()
+        }
         Timber.d("Set container.execArgs to '${containerData.execArgs}'")
     }
 
@@ -273,25 +280,34 @@ object ContainerUtils {
         }
     }
 
-    fun getOrCreateContainer(context: Context, appId: Int): Container {
-        val containerId = getContainerId(appId)
+    private fun createNewContainer(
+        context: Context,
+        appId: Int,
+        containerId: Int,
+        containerManager: ContainerManager,
+        customConfig: ContainerData? = null
+    ): Container {
+        // set up container drives to include app
+        val defaultDrives = PrefManager.drives
+        val appDirPath = SteamService.getAppDirPath(appId)
+        val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
+        val drives = "$defaultDrives$drive:$appDirPath"
+        Timber.d("Prepared container drives: $drives")
 
-        val containerManager = ContainerManager(context)
-        return if (containerManager.hasContainer(containerId)) {
-            containerManager.getContainerById(containerId)
+        val data = JSONObject()
+        data.put("name", "container_$containerId")
+        val container = containerManager.createContainerFuture(containerId, data).get()
+
+        val containerData = if (customConfig != null) {
+            // Use custom config, but ensure drives are set if not specified
+            if (customConfig.drives == Container.DEFAULT_DRIVES) {
+                customConfig.copy(drives = drives)
+            } else {
+                customConfig
+            }
         } else {
-            // set up container drives to include app
-            val defaultDrives = PrefManager.drives
-            val appDirPath = SteamService.getAppDirPath(appId)
-            val drive: Char = Container.getNextAvailableDriveLetter(defaultDrives)
-            val drives = "$defaultDrives$drive:$appDirPath"
-            Timber.d("Prepared container drives: $drives")
-
-            val data = JSONObject()
-            data.put("name", "container_$containerId")
-            val container = containerManager.createContainerFuture(containerId, data).get()
-
-            val containerData = ContainerData(
+            // Use default config with drives
+            ContainerData(
                 screenSize = PrefManager.screenSize,
                 envVars = PrefManager.envVars,
                 cpuList = PrefManager.cpuList,
@@ -322,9 +338,59 @@ object ContainerUtils {
                 mouseWarpOverride = PrefManager.mouseWarpOverride,
                 disableMouseInput = PrefManager.disableMouseInput,
             )
-            applyToContainer(context, container, containerData)
+        }
+        
+        applyToContainer(context, container, containerData)
+        return container
+    }
 
+    fun getOrCreateContainer(context: Context, appId: Int): Container {
+        val containerId = getContainerId(appId)
+        val containerManager = ContainerManager(context)
+        
+        return if (containerManager.hasContainer(containerId)) {
+            containerManager.getContainerById(containerId)
+        } else {
+            createNewContainer(context, appId, containerId, containerManager)
+        }
+    }
+    
+    fun getOrCreateContainerWithOverride(context: Context, appId: Int): Container {
+        val containerId = getContainerId(appId)
+        val containerManager = ContainerManager(context)
+        
+        return if (containerManager.hasContainer(containerId)) {
+            val container = containerManager.getContainerById(containerId)
+            
+            // Apply temporary override if present (without saving to disk)
+            if (IntentLaunchManager.hasTemporaryOverride(appId)) {
+                val overrideConfig = IntentLaunchManager.getTemporaryOverride(appId)
+                if (overrideConfig != null) {
+                    // Backup original config before applying override (if not already backed up)
+                    if (IntentLaunchManager.getOriginalConfig(appId) == null) {
+                        val originalConfig = toContainerData(container)
+                        IntentLaunchManager.setOriginalConfig(appId, originalConfig)
+                    }
+                    
+                    // Get the effective config (merge base with override)
+                    val effectiveConfig = IntentLaunchManager.getEffectiveContainerConfig(context, appId)
+                    if (effectiveConfig != null) {
+                        applyToContainer(context, container, effectiveConfig, saveToDisk = false)
+                        Timber.i("Applied temporary config override to existing container for app $appId (in-memory only)")
+                    }
+                }
+            }
+            
             container
+        } else {
+            // Create new container with override config if present
+            val overrideConfig = if (IntentLaunchManager.hasTemporaryOverride(appId)) {
+                IntentLaunchManager.getTemporaryOverride(appId)
+            } else {
+                null
+            }
+            
+            createNewContainer(context, appId, containerId, containerManager, overrideConfig)
         }
     }
 

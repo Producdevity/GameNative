@@ -2,6 +2,7 @@ package app.gamenative
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.os.Build
@@ -32,6 +33,7 @@ import app.gamenative.ui.PluviaMain
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.utils.AnimatedPngDecoder
 import app.gamenative.utils.IconDecoder
+import app.gamenative.utils.IntentLaunchManager
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
@@ -49,6 +51,9 @@ class MainActivity : ComponentActivity() {
 
         private var currentOrientationChangeValue: Int = 0
         private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
+        
+        // Store pending launch request to be processed after UI is ready
+        var pendingLaunchRequest: IntentLaunchManager.LaunchRequest? = null
     }
 
     private val onSetSystemUi: (AndroidEvent.SetSystemUIVisibility) -> Unit = {
@@ -82,6 +87,8 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(TRANSPARENT, TRANSPARENT)
         )
         super.onCreate(savedInstanceState)
+
+        handleLaunchIntent(intent)
 
         // Prevent device from sleeping while app is open
         AppUtils.keepScreenOn(this)
@@ -136,6 +143,28 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalCoilImageLoader provides imageLoader) {
                 PluviaMain()
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleLaunchIntent(intent)
+    }
+    private fun handleLaunchIntent(intent: Intent) {
+        Timber.d("[MainActivity]: handleLaunchIntent called with intent: action=${intent.action}, extras=${intent.extras}")
+        try {
+            val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
+            if (launchRequest != null) {
+                Timber.d("[MainActivity]: Received external launch intent for app ${launchRequest.appId}")
+                
+                // Store the launch request to be processed after UI is ready
+                pendingLaunchRequest = launchRequest
+                Timber.d("[MainActivity]: Stored pending launch request for app ${launchRequest.appId}")
+            } else {
+                Timber.d("[MainActivity]: parseLaunchIntent returned null")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "[MainActivity]: Failed to handle launch intent")
         }
     }
 
