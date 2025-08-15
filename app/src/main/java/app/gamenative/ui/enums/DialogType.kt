@@ -23,7 +23,7 @@ enum class DialogType(val icon: ImageVector? = null) {
     CANCEL_APP_DOWNLOAD,
     DELETE_APP,
     INSTALL_IMAGEFS,
-    
+
     SAVE_CONTAINER_CONFIG,
 
     NONE,

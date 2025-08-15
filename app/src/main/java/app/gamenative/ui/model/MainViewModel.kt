@@ -235,7 +235,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             // Check if we have a temporary override before doing anything
             val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
-            
+
             SteamService.notifyRunningProcesses()
             SteamService.closeApp(appId) { prefix ->
                 PathType.from(prefix).toAbsPath(context, appId)

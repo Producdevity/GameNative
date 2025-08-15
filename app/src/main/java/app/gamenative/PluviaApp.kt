@@ -56,7 +56,7 @@ class PluviaApp : SplitCompatApplication() {
         // Initialize PostHog Analytics
         val postHogConfig = PostHogAndroidConfig(
             apiKey = BuildConfig.POSTHOG_API_KEY,
-            host = BuildConfig.POSTHOG_HOST
+            host = BuildConfig.POSTHOG_HOST,
         )
         PostHogAndroid.setup(this, postHogConfig)
     }

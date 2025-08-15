@@ -53,11 +53,11 @@ class MainActivity : ComponentActivity() {
 
         private var currentOrientationChangeValue: Int = 0
         private var availableOrientations: EnumSet<Orientation> = EnumSet.of(Orientation.UNSPECIFIED)
-        
+
         // Store pending launch request to be processed after UI is ready
         @Volatile
         private var pendingLaunchRequest: IntentLaunchManager.LaunchRequest? = null
-        
+
         // Atomically get and clear the pending launch request
         fun consumePendingLaunchRequest(): IntentLaunchManager.LaunchRequest? {
             synchronized(this) {
@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
                 return request
             }
         }
-        
+
         // Atomically set a new pending launch request
         fun setPendingLaunchRequest(request: IntentLaunchManager.LaunchRequest) {
             synchronized(this) {
@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.rgb(30, 30, 30)),
-            navigationBarStyle = SystemBarStyle.light(TRANSPARENT, TRANSPARENT)
+            navigationBarStyle = SystemBarStyle.light(TRANSPARENT, TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
 
@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[MainActivity]: Received external launch intent for app ${launchRequest.appId}")
-                
+
                 // If already logged in, emit event immediately
                 // Otherwise store for processing after login
                 if (SteamService.isLoggedIn) {
@@ -183,7 +183,7 @@ class MainActivity : ComponentActivity() {
                     lifecycleScope.launch {
                         PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
                     }
-                    
+
                     // Apply config override if present
                     launchRequest.containerConfig?.let { config ->
                         IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
@@ -246,7 +246,11 @@ class MainActivity : ComponentActivity() {
         SteamService.autoStopWhenIdle = true
 
         // stop SteamService only if no downloads or sync are in progress
-        if (!isChangingConfigurations && SteamService.isConnected && !SteamService.hasActiveOperations() && !SteamService.isLoginInProgress) {
+        if (!isChangingConfigurations &&
+            SteamService.isConnected &&
+            !SteamService.hasActiveOperations() &&
+            !SteamService.isLoginInProgress
+        ) {
             Timber.i("Stopping SteamService - no active operations")
             SteamService.stop()
         }

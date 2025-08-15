@@ -19,7 +19,7 @@ object IntentLaunchManager {
 
     data class LaunchRequest(
         val appId: Int,
-        val containerConfig: ContainerData? = null
+        val containerConfig: ContainerData? = null,
     )
 
     fun parseLaunchIntent(intent: Intent): LaunchRequest? {
@@ -75,7 +75,6 @@ object IntentLaunchManager {
             } else {
                 Timber.i("[IntentLaunchManager]: Stored temporary config override for app $appId (container will be created on launch)")
             }
-
         } catch (e: Exception) {
             Timber.e(e, "[IntentLaunchManager]: Failed to apply temporary config override for app $appId")
             throw e
@@ -192,7 +191,11 @@ object IntentLaunchManager {
             cpuList = if (json.has("cpuList")) json.getString("cpuList") else Container.getFallbackCPUList(),
             cpuListWoW64 = if (json.has("cpuListWoW64")) json.getString("cpuListWoW64") else Container.getFallbackCPUListWoW64(),
             wow64Mode = if (json.has("wow64Mode")) json.getBoolean("wow64Mode") else true,
-            startupSelection = if (json.has("startupSelection")) json.getInt("startupSelection").toByte() else Container.STARTUP_SELECTION_ESSENTIAL.toInt().toByte(),
+            startupSelection = if (json.has("startupSelection")) {
+                json.getInt("startupSelection").toByte()
+            } else {
+                Container.STARTUP_SELECTION_ESSENTIAL.toInt().toByte()
+            },
             box86Version = if (json.has("box86Version")) json.getString("box86Version") else "",
             box64Version = if (json.has("box64Version")) json.getString("box64Version") else "",
             box86Preset = if (json.has("box86Preset")) json.getString("box86Preset") else "",
@@ -207,10 +210,14 @@ object IntentLaunchManager {
             sdlControllerAPI = if (json.has("sdlControllerAPI")) json.getBoolean("sdlControllerAPI") else true,
             enableXInput = if (json.has("enableXInput")) json.getBoolean("enableXInput") else true,
             enableDInput = if (json.has("enableDInput")) json.getBoolean("enableDInput") else true,
-            dinputMapperType = if (json.has("dinputMapperType")) json.getInt("dinputMapperType").toByte() else 1.toByte(),
+            dinputMapperType = if (json.has("dinputMapperType")) {
+                json.getInt("dinputMapperType").toByte()
+            } else {
+                1.toByte()
+            },
             disableMouseInput = if (json.has("disableMouseInput")) json.getBoolean("disableMouseInput") else false,
             shaderBackend = if (json.has("shaderBackend")) json.getString("shaderBackend") else "glsl",
-            useGLSL = if (json.has("useGLSL")) json.getString("useGLSL") else "enabled"
+            useGLSL = if (json.has("useGLSL")) json.getString("useGLSL") else "enabled",
         )
 
         val validationIssues = validateContainerConfig(config)
@@ -227,14 +234,26 @@ object IntentLaunchManager {
 
         return ContainerData(
             name = override.name.ifEmpty { base.name },
-            screenSize = if (override.screenSize != Container.DEFAULT_SCREEN_SIZE) override.screenSize else base.screenSize,
+            screenSize = if (override.screenSize != Container.DEFAULT_SCREEN_SIZE) {
+                override.screenSize
+            } else {
+                base.screenSize
+            },
             envVars = if (override.envVars != Container.DEFAULT_ENV_VARS) override.envVars else base.envVars,
-            graphicsDriver = if (override.graphicsDriver != Container.DEFAULT_GRAPHICS_DRIVER) override.graphicsDriver else base.graphicsDriver,
+            graphicsDriver = if (override.graphicsDriver != Container.DEFAULT_GRAPHICS_DRIVER) {
+                override.graphicsDriver
+            } else {
+                base.graphicsDriver
+            },
             graphicsDriverVersion = override.graphicsDriverVersion.ifEmpty { base.graphicsDriverVersion },
             dxwrapper = if (override.dxwrapper != Container.DEFAULT_DXWRAPPER) override.dxwrapper else base.dxwrapper,
             dxwrapperConfig = override.dxwrapperConfig.ifEmpty { base.dxwrapperConfig },
             audioDriver = if (override.audioDriver != Container.DEFAULT_AUDIO_DRIVER) override.audioDriver else base.audioDriver,
-            wincomponents = if (override.wincomponents != Container.DEFAULT_WINCOMPONENTS) override.wincomponents else base.wincomponents,
+            wincomponents = if (override.wincomponents != Container.DEFAULT_WINCOMPONENTS) {
+                override.wincomponents
+            } else {
+                base.wincomponents
+            },
             drives = if (override.drives != Container.DEFAULT_DRIVES) override.drives else base.drives,
             execArgs = override.execArgs.ifEmpty { base.execArgs },
             executablePath = override.executablePath.ifEmpty { base.executablePath },
@@ -243,9 +262,17 @@ object IntentLaunchManager {
             showFPS = if (override.showFPS != false) override.showFPS else base.showFPS,
             launchRealSteam = if (override.launchRealSteam != false) override.launchRealSteam else base.launchRealSteam,
             cpuList = if (override.cpuList != Container.getFallbackCPUList()) override.cpuList else base.cpuList,
-            cpuListWoW64 = if (override.cpuListWoW64 != Container.getFallbackCPUListWoW64()) override.cpuListWoW64 else base.cpuListWoW64,
+            cpuListWoW64 = if (override.cpuListWoW64 != Container.getFallbackCPUListWoW64()) {
+                override.cpuListWoW64
+            } else {
+                base.cpuListWoW64
+            },
             wow64Mode = if (override.wow64Mode != true) override.wow64Mode else base.wow64Mode,
-            startupSelection = if (override.startupSelection != Container.STARTUP_SELECTION_ESSENTIAL.toInt().toByte()) override.startupSelection else base.startupSelection,
+            startupSelection = if (override.startupSelection != Container.STARTUP_SELECTION_ESSENTIAL.toInt().toByte()) {
+                override.startupSelection
+            } else {
+                base.startupSelection
+            },
             box86Version = override.box86Version.ifEmpty { base.box86Version },
             box64Version = override.box64Version.ifEmpty { base.box64Version },
             box86Preset = override.box86Preset.ifEmpty { base.box86Preset },
@@ -253,7 +280,11 @@ object IntentLaunchManager {
             desktopTheme = override.desktopTheme.ifEmpty { base.desktopTheme },
             csmt = if (override.csmt != true) override.csmt else base.csmt,
             videoPciDeviceID = if (override.videoPciDeviceID != 1728) override.videoPciDeviceID else base.videoPciDeviceID,
-            offScreenRenderingMode = if (override.offScreenRenderingMode != "fbo") override.offScreenRenderingMode else base.offScreenRenderingMode,
+            offScreenRenderingMode = if (override.offScreenRenderingMode != "fbo") {
+                override.offScreenRenderingMode
+            } else {
+                base.offScreenRenderingMode
+            },
             strictShaderMath = if (override.strictShaderMath != true) override.strictShaderMath else base.strictShaderMath,
             videoMemorySize = if (override.videoMemorySize != "2048") override.videoMemorySize else base.videoMemorySize,
             mouseWarpOverride = if (override.mouseWarpOverride != "disable") override.mouseWarpOverride else base.mouseWarpOverride,
@@ -263,7 +294,7 @@ object IntentLaunchManager {
             dinputMapperType = if (override.dinputMapperType != 1.toByte()) override.dinputMapperType else base.dinputMapperType,
             disableMouseInput = if (override.disableMouseInput != false) override.disableMouseInput else base.disableMouseInput,
             shaderBackend = if (override.shaderBackend != "glsl") override.shaderBackend else base.shaderBackend,
-            useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL
+            useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL,
         )
     }
 }

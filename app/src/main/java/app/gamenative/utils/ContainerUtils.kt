@@ -192,7 +192,7 @@ object ContainerUtils {
     fun applyToContainer(context: Context, container: Container, containerData: ContainerData) {
         applyToContainer(context, container, containerData, saveToDisk = true)
     }
-    
+
     fun applyToContainer(context: Context, container: Container, containerData: ContainerData, saveToDisk: Boolean) {
         Timber.d("Applying containerData to container. execArgs: '${containerData.execArgs}', saveToDisk: $saveToDisk")
         val userRegFile = File(container.rootDir, ".wine/user.reg")
@@ -251,7 +251,7 @@ object ContainerUtils {
         container.setInputType(api.ordinal)
         container.setDinputMapperType(containerData.dinputMapperType)
         Timber.d("Container set: preferredInputApi=%s, dinputMapperType=0x%02x", api, containerData.dinputMapperType)
-        
+
         if (saveToDisk) {
             container.saveData()
         }
@@ -285,7 +285,7 @@ object ContainerUtils {
         appId: Int,
         containerId: Int,
         containerManager: ContainerManager,
-        customConfig: ContainerData? = null
+        customConfig: ContainerData? = null,
     ): Container {
         // set up container drives to include app
         val defaultDrives = PrefManager.drives
@@ -339,7 +339,7 @@ object ContainerUtils {
                 disableMouseInput = PrefManager.disableMouseInput,
             )
         }
-        
+
         applyToContainer(context, container, containerData)
         return container
     }
@@ -347,21 +347,21 @@ object ContainerUtils {
     fun getOrCreateContainer(context: Context, appId: Int): Container {
         val containerId = getContainerId(appId)
         val containerManager = ContainerManager(context)
-        
+
         return if (containerManager.hasContainer(containerId)) {
             containerManager.getContainerById(containerId)
         } else {
             createNewContainer(context, appId, containerId, containerManager)
         }
     }
-    
+
     fun getOrCreateContainerWithOverride(context: Context, appId: Int): Container {
         val containerId = getContainerId(appId)
         val containerManager = ContainerManager(context)
-        
+
         return if (containerManager.hasContainer(containerId)) {
             val container = containerManager.getContainerById(containerId)
-            
+
             // Apply temporary override if present (without saving to disk)
             if (IntentLaunchManager.hasTemporaryOverride(appId)) {
                 val overrideConfig = IntentLaunchManager.getTemporaryOverride(appId)
@@ -371,7 +371,7 @@ object ContainerUtils {
                         val originalConfig = toContainerData(container)
                         IntentLaunchManager.setOriginalConfig(appId, originalConfig)
                     }
-                    
+
                     // Get the effective config (merge base with override)
                     val effectiveConfig = IntentLaunchManager.getEffectiveContainerConfig(context, appId)
                     if (effectiveConfig != null) {
@@ -380,7 +380,7 @@ object ContainerUtils {
                     }
                 }
             }
-            
+
             container
         } else {
             // Create new container with override config if present
@@ -389,7 +389,7 @@ object ContainerUtils {
             } else {
                 null
             }
-            
+
             createNewContainer(context, appId, containerId, containerManager, overrideConfig)
         }
     }
@@ -403,7 +403,7 @@ object ContainerUtils {
         if (manager.hasContainer(containerId)) {
             // Remove the container directory asynchronously
             manager.removeContainerAsync(
-                manager.getContainerById(containerId)
+                manager.getContainerById(containerId),
             ) {
                 Timber.i("Deleted container for appId=$appId (containerId=$containerId)")
             }

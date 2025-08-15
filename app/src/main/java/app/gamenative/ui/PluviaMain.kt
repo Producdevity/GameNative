@@ -109,7 +109,7 @@ fun PluviaMain(
                         type = DialogType.SYNC_FAIL,
                         title = context.getString(R.string.game_not_installed_title),
                         message = context.getString(R.string.game_not_installed_message, appName),
-                        dismissBtnText = context.getString(R.string.ok)
+                        dismissBtnText = context.getString(R.string.ok),
                     )
                     return@let
                 }
@@ -118,7 +118,7 @@ fun PluviaMain(
                     IntentLaunchManager.applyTemporaryConfigOverride(
                         context,
                         launchRequest.appId,
-                        launchRequest.containerConfig
+                        launchRequest.containerConfig,
                     )
                     Timber.i("[PluviaMain]: Applied container config override for app ${launchRequest.appId}")
                 }
@@ -297,7 +297,7 @@ fun PluviaMain(
             title = context.getString(R.string.save_container_settings_title),
             message = context.getString(R.string.save_container_settings_message),
             confirmBtnText = context.getString(R.string.save),
-            dismissBtnText = context.getString(R.string.discard)
+            dismissBtnText = context.getString(R.string.discard),
         )
     }
 
@@ -747,7 +747,7 @@ fun preLaunchApp(
                         setLoadingProgress = setLoadingProgress,
                         setMessageDialogState = setMessageDialogState,
                         onSuccess = onSuccess,
-                        retryCount = retryCount + 1
+                        retryCount = retryCount + 1,
                     )
                 } else {
                     val message = if (useTemporaryOverride) {
